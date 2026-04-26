@@ -7,9 +7,9 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODEL_PATH = Path(os.getenv("MODEL_PATH", PROJECT_ROOT / "artifacts" / "vpn_model_bundle.joblib"))
-PLOTS_PATH = PROJECT_ROOT / "plots"
+APP_DIR = Path(__file__).resolve().parent
+MODEL_PATH = Path(os.getenv("MODEL_PATH", APP_DIR / "artifacts" / "vpn_model_bundle.joblib"))
+PLOTS_PATH = Path(os.getenv("PLOTS_PATH", APP_DIR / "plots"))
 
 app = Flask(__name__)
 cors_origins = os.getenv("CORS_ORIGINS", "*")

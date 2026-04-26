@@ -10,9 +10,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_PATH = PROJECT_ROOT / "consolidated_traffic_data.csv"
-MODEL_PATH = PROJECT_ROOT / "artifacts" / "vpn_model_bundle.joblib"
+APP_DIR = Path(__file__).resolve().parent
+DATA_PATH = Path(os.getenv("DATA_PATH", APP_DIR / "consolidated_traffic_data.csv"))
+MODEL_PATH = Path(os.getenv("MODEL_PATH", APP_DIR / "artifacts" / "vpn_model_bundle.joblib"))
 
 
 def prepare_dataset(df_raw: pd.DataFrame):
