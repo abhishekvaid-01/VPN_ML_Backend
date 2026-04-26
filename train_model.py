@@ -86,7 +86,17 @@ def train_and_save():
     scaler = RobustScaler()
     x_train_scaled = scaler.fit_transform(x_train)
 
-    model = ExtraTreesClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+    n_estimators = int(os.getenv("MODEL_N_ESTIMATORS", "60"))
+    max_depth = int(os.getenv("MODEL_MAX_DEPTH", "18"))
+    min_samples_leaf = int(os.getenv("MODEL_MIN_SAMPLES_LEAF", "2"))
+
+    model = ExtraTreesClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        min_samples_leaf=min_samples_leaf,
+        random_state=42,
+        n_jobs=1,
+    )
     model.fit(x_train_scaled, y_train)
 
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)

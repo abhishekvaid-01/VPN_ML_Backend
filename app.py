@@ -20,10 +20,21 @@ bundle = None
 
 def load_bundle():
     global bundle
-    if MODEL_PATH.exists():
-        bundle = joblib.load(MODEL_PATH)
-    else:
+    if not MODEL_PATH.exists():
         bundle = None
+        return False
+
+    if bundle is None:
+        bundle = joblib.load(MODEL_PATH)
+
+    return True
+
+
+def ensure_bundle_loaded():
+    try:
+        return load_bundle()
+    except MemoryError:
+        raise RuntimeError("Insufficient memory to load model on current Render instance")
 
 
 def build_feature_vector(payload: dict):
@@ -58,15 +69,19 @@ def build_feature_vector(payload: dict):
 
 @app.get("/api/health")
 def health():
-    if bundle is None:
+    if not MODEL_PATH.exists():
         return jsonify({"status": "error", "message": f"Model bundle not found at {MODEL_PATH}"}), 500
     return jsonify({"status": "ok", "model_path": str(MODEL_PATH)})
 
 
 @app.get("/api/features")
 def features():
-    if bundle is None:
-        return jsonify({"error": "Model bundle not found"}), 500
+    try:
+        if not ensure_bundle_loaded():
+            return jsonify({"error": "Model bundle not found"}), 500
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
+
     return jsonify(
         {
             "input_features": bundle["num_cols"],
@@ -93,8 +108,11 @@ def plot_file(filename):
 
 @app.post("/api/predict")
 def predict():
-    if bundle is None:
-        return jsonify({"error": "Model bundle not found"}), 500
+    try:
+        if not ensure_bundle_loaded():
+            return jsonify({"error": "Model bundle not found"}), 500
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
 
     payload = request.get_json(silent=True) or {}
 
@@ -108,7 +126,7 @@ def predict():
     except Exception as exc:
         return jsonify({"error": f"Prediction failed: {exc}"}), 500
 
-    return jsonify(
+    response = jsonify(
         {
             "prediction": "VPN" if pred == 1 else "Non-VPN",
             "vpn_probability": round(proba_vpn, 6),
@@ -116,8 +134,12 @@ def predict():
         }
     )
 
+    # Free model from memory after each prediction on low-memory instances.
+    if os.getenv("UNLOAD_MODEL_AFTER_PREDICT", "1") == "1":
+        global bundle
+        bundle = None
 
-load_bundle()
+    return response
 
 
 if __name__ == "__main__":
