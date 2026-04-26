@@ -30,10 +30,65 @@ MODEL_PATH = resolve_path("MODEL_PATH", "artifacts/vpn_model_bundle.joblib")
 PLOTS_PATH = resolve_path("PLOTS_PATH", "plots")
 
 app = Flask(__name__)
-cors_origins = os.getenv("CORS_ORIGINS", "*")
-CORS(app, resources={r"/api/*": {"origins": cors_origins.split(",") if cors_origins != "*" else "*"}})
+
+
+def parse_cors_origins(raw_value: str):
+    if not raw_value or raw_value.strip() == "*":
+        return "*"
+
+    cleaned = []
+    for item in raw_value.split(","):
+        origin = item.strip().rstrip("/")
+        if origin:
+            cleaned.append(origin)
+
+    return cleaned if cleaned else "*"
+
+
+ALLOWED_ORIGINS = parse_cors_origins(os.getenv("CORS_ORIGINS", "*"))
+CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
 
 bundle = None
+
+
+@app.after_request
+def apply_cors_headers(response):
+    origin = (request.headers.get("Origin") or "").rstrip("/")
+
+    if ALLOWED_ORIGINS == "*":
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    elif origin and origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+
+    response.headers.setdefault("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    response.headers.setdefault("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    return response
+
+
+@app.route("/api/<path:_>", methods=["OPTIONS"])
+def api_options(_):
+    return "", 204
+
+
+@app.get("/")
+def index():
+    return jsonify({"status": "ok", "message": "VPN ML backend is running", "health": "/api/health"})
+
+
+@app.get("/api")
+def api_index():
+    return jsonify(
+        {
+            "endpoints": [
+                "/api/health",
+                "/api/features",
+                "/api/predict",
+                "/api/plots",
+                "/api/plots/<filename>",
+            ]
+        }
+    )
 
 
 def load_bundle():
