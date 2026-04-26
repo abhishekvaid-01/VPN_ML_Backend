@@ -8,8 +8,26 @@ from flask_cors import CORS
 
 
 APP_DIR = Path(__file__).resolve().parent
-MODEL_PATH = Path(os.getenv("MODEL_PATH", APP_DIR / "artifacts" / "vpn_model_bundle.joblib"))
-PLOTS_PATH = Path(os.getenv("PLOTS_PATH", APP_DIR / "plots"))
+
+
+def resolve_path(env_key: str, default_relative: str):
+    raw = os.getenv(env_key, default_relative)
+    p = Path(raw)
+    if p.is_absolute():
+        return p
+
+    # If only a filename is provided (e.g. vpn_model_bundle.joblib),
+    # prefer the conventional artifacts/ location.
+    if p.parent == Path(".") and env_key == "MODEL_PATH":
+        candidate = APP_DIR / "artifacts" / p.name
+        if candidate.exists():
+            return candidate
+
+    return APP_DIR / p
+
+
+MODEL_PATH = resolve_path("MODEL_PATH", "artifacts/vpn_model_bundle.joblib")
+PLOTS_PATH = resolve_path("PLOTS_PATH", "plots")
 
 app = Flask(__name__)
 cors_origins = os.getenv("CORS_ORIGINS", "*")
