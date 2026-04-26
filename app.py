@@ -108,6 +108,8 @@ def plot_file(filename):
 
 @app.post("/api/predict")
 def predict():
+    global bundle
+
     try:
         if not ensure_bundle_loaded():
             return jsonify({"error": "Model bundle not found"}), 500
@@ -136,7 +138,6 @@ def predict():
 
     # Free model from memory after each prediction on low-memory instances.
     if os.getenv("UNLOAD_MODEL_AFTER_PREDICT", "1") == "1":
-        global bundle
         bundle = None
 
     return response
